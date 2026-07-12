@@ -64,10 +64,17 @@ extern void BSP_Board_PreInit(void);
 #define SRAM_SIZE   0x00200000    /* 2 MB (RAM0-RAM5) */
 #define SRAM_END    (SRAM_START + SRAM_SIZE)
 
-/* PSRAM memory configuration for SF32LB58 (MPI1 SBUS) */
+/* PSRAM memory configuration for SF32LB58 (MPI1 SBUS)
+ *
+ * a128r32n1 board: 32 MB PSRAM at 0x60000000.
+ * First 2 MB reserved for SDK code/data regions (PSRAM_DATA at 0x60200000).
+ * NuttX heap uses the remaining space starting at PSRAM_HEAP_START.
+ */
 
-#define PSRAM_START 0x60000000
-#define PSRAM_SIZE  0x00800000    /* 8 MB (default, configurable via Kconfig) */
+#define PSRAM_START      0x60000000
+#define PSRAM_HEAP_START 0x60800000    /* After 4 MB reserved region */
+#define PSRAM_SIZE       0x01000000    /* 16 MB total */
+#define PSRAM_HEAP_SIZE  (PSRAM_SIZE - (PSRAM_HEAP_START - PSRAM_START))  /* 12 MB for heap */
 
 /****************************************************************************
  * Private Types
@@ -185,7 +192,7 @@ void arm_addregion(void)
 #ifdef CONFIG_BSP_USING_PSRAM
   if (g_psram_ready)
     {
-      kumm_addregion((void *)PSRAM_START, PSRAM_SIZE);
+      kumm_addregion((void *)PSRAM_HEAP_START, PSRAM_HEAP_SIZE);
     }
 #endif
 }

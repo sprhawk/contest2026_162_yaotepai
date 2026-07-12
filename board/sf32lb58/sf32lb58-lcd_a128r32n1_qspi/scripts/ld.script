@@ -4,12 +4,9 @@
  * Copyright (C) 2026 Yang Hongbo <yang.hongbo@iotpi.xyz>
  * SPDX-License-Identifier: Apache-2.0
  *
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.  The
- * ASF licenses this file to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance with the
- * License.  You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may
+ * not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
  *   http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -21,17 +18,26 @@
  *
  ****************************************************************************/
 
-/* SF32LB58 memory layout:
- *   Flash:  XIP from QSPI1, application starts at 0x12010000
- *   SRAM:   RAM0-RAM5 = 2 MB (0x20000000 - 0x20200000)
- *   PSRAM:  MPI1 SBUS = 8 MB (0x60000000, configurable)
+/* SF32LB58 a128r32n1 memory layout (migrated to openvela NuttX):
+ *
+ *   Flash (XIP):  QSPI2 NOR 1 MB at 0x12000000 (bootloader @ 0x12000000, app @ 0x12010000)
+ *   SRAM:         RAM0-RAM5 = 1.5 MB (0x20000000 - 0x20180000)
+ *   PSRAM:        MPI1 OPSRAM = 32 MB (0x60200000, after 2MB reserved)
+ *
+ * Migration notes (sf32lb52 SDK → openvela pattern):
+ *   - Removed: .retm_data, .itcm_code/.itcm_data, .retm_bss/.itcm_bss,
+ *              .RW_IRAM0, .rom_ex, .rom2/.rom3, .stack/.heap, ROM_EX/ROM2/ROM3
+ *   - Added:   .ramfunc (flash driver), .ram_vectors, .tdata/.tbss,
+ *              /DISCARD/ build-id, NuttX startup symbols
+ *   - .ramfunc covers critical code that must run from SRAM (flash erase/write)
  */
 
 MEMORY
 {
-  flash (rx) : ORIGIN = 0x12010000, LENGTH = 16M
-  sram (rwx) : ORIGIN = 0x20000000, LENGTH = 2048K
-  psram (rwx) : ORIGIN = 0x60000000, LENGTH = 8M
+  code (rx)  : ORIGIN = 0x10000000, LENGTH = 4M     /* 4MB occupied for code */
+  sram (rwx)  : ORIGIN = 0x20000000, LENGTH = 1536K    /* RAM0-RAM5: 128+128+256+512+512 KB */
+  psram (rwx) : ORIGIN = 0x60400000, LENGTH = 16M      /* MPI1 qPSRAM, after 4MB reserved for code */
+  psram2 (rwx) : ORIGIN = 0x62000000, LENGTH = 16M      /* MPI2 qPSRAM */
 }
 
 OUTPUT_ARCH(arm)
@@ -52,7 +58,6 @@ SECTIONS
         /* Ensure vector table is properly aligned (must be at flash start) */
         . = ALIGN(512);
         KEEP(*(.vectors))
-        /* Add padding after vectors to match SDK layout */
         . = ALIGN(4);
         *(.text .text.*)
         *(.fixup)
@@ -112,18 +117,28 @@ SECTIONS
         KEEP(*(LcdDriverDescTab))
         LcdDriverDescTab_end = .;
 
+        . = ALIGN(4);
+        __usbh_class_info_start__ = .;
+        KEEP(*(.usbh_class_info))
+        __usbh_class_info_end__ = .;
+
+        . = ALIGN(4);
+        __nand_cfg_db_start__ = .;
+        KEEP(*(.nand_cfg_db))
+        __nand_cfg_db_end__ = .;
+
         KEEP(*(.eh_frame*))
         _etext = ABSOLUTE(.);
-    } > flash
+    } > code
 
     .ARM.extab : {
-        *(.ARM.extab*)
-    } > flash
+        *(.ARM.extab* .gnu.linkonce.armextab.*)
+    } > code
 
     __exidx_start = ABSOLUTE(.);
     .ARM.exidx : {
-        *(.ARM.exidx*)
-    } > flash
+        *(.ARM.exidx* .gnu.linkonce.armexidx.*)
+    } > code
     __exidx_end = ABSOLUTE(.);
 
     .copy.table : {
@@ -133,7 +148,7 @@ SECTIONS
         LONG (ADDR(.data))
         LONG (SIZEOF(.data))
         __copy_table_end__ = .;
-    } > flash
+    } > code
 
     .zero.table : {
         . = ALIGN(4);
@@ -141,24 +156,22 @@ SECTIONS
         LONG (__bss_start__)
         LONG (__bss_end__ - __bss_start__)
         __zero_table_end__ = .;
-    } > flash
+    } > code
 
     .tdata : {
         _stdata = ABSOLUTE(.);
         *(.tdata .tdata.* .gnu.linkonce.td.*);
         _etdata = ABSOLUTE(.);
-    } > flash
+    } > code
 
     .tbss : {
         _stbss = ABSOLUTE(.);
         *(.tbss .tbss.* .gnu.linkonce.tb.* .tcommon);
         _etbss = ABSOLUTE(.);
-    } > flash
+    } > code
 
     _eronly = ABSOLUTE(.);
     __etext = ALIGN(4);
-
-    /* The RAM vector table (if present) should lie at the beginning of SRAM */
 
     .ram_vectors : {
         *(.ram_vectors)
@@ -171,6 +184,7 @@ SECTIONS
         *(.data)
         *(.data.*)
         *(.gnu.linkonce.d.*)
+        *(.l1_ret_data_*)
         CONSTRUCTORS
 
         . = ALIGN(4);
@@ -207,7 +221,7 @@ SECTIONS
         . = ALIGN(4);
         __data_end__ = .;
         _edata = ABSOLUTE(.);
-    } > sram AT > flash
+    } > sram AT > code
 
     .ramfunc : {
         . = ALIGN(4);
@@ -215,7 +229,7 @@ SECTIONS
         *(.ramfunc .ramfunc.*)
         . = ALIGN(4);
         _eramfunc = ABSOLUTE(.);
-    } > sram AT > flash
+    } > sram AT > code
 
     _siramfunc = LOADADDR(.ramfunc);
 
@@ -232,11 +246,32 @@ SECTIONS
         _ebss = ABSOLUTE(.);
     } > sram
 
-    /* Heap starts after BSS */
     . = ALIGN(4);
     __end__ = .;
     PROVIDE(end = .);
     PROVIDE(_end = .);
+
+    /* PSRAM sections for cache-aligned data */
+    .RW_PSRAM1 : {
+        . = ALIGN(4);
+        __rw_psram1_start__ = .;
+        *(.*l2_ret_data_*)
+        *(.*l2_ret_bss_*)
+        *(.*l2_cache_ret_data_*)
+        *(.*l2_cache_ret_bss_*)
+        . = ALIGN(4);
+        __rw_psram1_end__ = .;
+    } > psram
+
+    .RW_PSRAM_NON_RET : {
+        . = ALIGN(32);  /* Cache-line aligned */
+        __RW_PSRAM_NON_RET_start__ = .;
+        *(.nand_cache)
+        *(.*l2_cache_non_ret_data_*)
+        *(.*l2_cache_non_ret_bss_*)
+        . = ALIGN(4);
+        __RW_PSRAM_NON_RET_end__ = .;
+    } > psram
 
     /* Stabs debugging sections. */
     .stab 0 : { *(.stab) }
