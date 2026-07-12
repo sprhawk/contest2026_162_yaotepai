@@ -38,6 +38,8 @@
 
 #include "arm_internal.h"
 #include "system_bf0_ap.h"
+/* define __PROGRAM_START is to exclude define to __cmsis_start */
+#define __PROGRAM_START __start
 #include "bf0_hal.h"
 
 /****************************************************************************
@@ -148,6 +150,38 @@ const uintptr_t g_idle_topstack = HEAP_BASE;
  * Public Functions
  ****************************************************************************/
 
+/* copied from __cmsis_start(void) */
+void __cmsis_copy(void)
+{
+  typedef struct {
+    uint32_t const* src;
+    uint32_t* dest;
+    uint32_t  wlen;
+  } __copy_table_t;
+
+  typedef struct {
+    uint32_t* dest;
+    uint32_t  wlen;
+  } __zero_table_t;
+
+  extern const __copy_table_t __copy_table_start__;
+  extern const __copy_table_t __copy_table_end__;
+  extern const __zero_table_t __zero_table_start__;
+  extern const __zero_table_t __zero_table_end__;
+
+  for (__copy_table_t const* pTable = &__copy_table_start__; pTable <
+&__copy_table_end__; ++pTable) { for(uint32_t i=0u; i<pTable->wlen; ++i) {
+      pTable->dest[i] = pTable->src[i];
+    }
+  }
+
+  for (__zero_table_t const* pTable = &__zero_table_start__; pTable <
+&__zero_table_end__; ++pTable) { for(uint32_t i=0u; i<pTable->wlen; ++i) {
+      pTable->dest[i] = 0u;
+    }
+  }
+}
+
 /****************************************************************************
  * Name: __sifli_start
  ****************************************************************************/
@@ -192,10 +226,12 @@ void __start(void)
   /* Copy .ramfunc section from flash to SRAM */
 
   for (src = (const uint32_t *)&_siramfunc,
-       dest = (uint32_t *)&_sramfunc; dest < (uint32_t *)&_eramfunc; )
+         dest = (uint32_t *)&_sramfunc; dest < (uint32_t *)&_eramfunc; )
     {
       *dest++ = *src++;
     }
+
+  __cmsis_copy();    
 
   arm_lowputc('A'); /* data segment init done */
 
