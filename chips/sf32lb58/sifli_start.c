@@ -248,7 +248,7 @@ void __start(void)
    * Some HAL functions may trigger hardware events that could
    * generate interrupts, but they won't fire while interrupts are disabled.
    */
-  HAL_Init();
+    HAL_Init();
     arm_lowputc('C'); /* HAL init done */
 
   /* Disable SysTick that was enabled by HAL_Init().

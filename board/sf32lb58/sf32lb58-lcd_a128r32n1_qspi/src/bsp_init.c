@@ -138,7 +138,7 @@ void BSP_Board_PreInit(void)
 #ifdef BSP_USING_PSRAM
     HAL_RCC_HCPU_ClockSelect(RCC_CLK_MOD_FLASH1, RCC_CLK_FLASH_DLL2);
     HAL_RCC_HCPU_ClockSelect(RCC_CLK_MOD_FLASH2, RCC_CLK_FLASH_DLL2);
-    bsp_psramc_init();
+    /* bsp_psramc_init(); */
 #endif
 
 #ifdef BSP_USING_NOR_FLASH4
@@ -204,7 +204,3 @@ __WEAK void SystemClock_Config(void)
 {
 
 }
-
-int bsp_psramc_init(void) {
-  return 0;
-}  
