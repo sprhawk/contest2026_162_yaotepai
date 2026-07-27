@@ -32,14 +32,26 @@
       "session_id": "7faf1b8e-8042-49ea-920d-39834b653695",
       "tool": "claude-code",
       "started_at": "2026-07-09T15:26:02.035Z",
-      "last_event_at": "2026-07-13T07:48:25.077Z",
-      "event_count": 61,
-      "raw_event_count": 1153,
+      "last_event_at": "2026-07-13T16:35:41.331Z",
+      "event_count": 93,
+      "raw_event_count": 1205,
       "file_path": "logs/sprhawk/2026-07-13/claude-code__7faf1b8e-8042-49ea-920d-39834b653695.jsonl",
+      "collection_mode": "cli",
+      "health": "ok",
+      "model": "mimo-v2.5-pro"
+    },
+    {
+      "session_id": "81930b3a-98cf-4b33-894b-06d0cded9dca",
+      "tool": "claude-code",
+      "started_at": "2026-07-13T16:36:04.547Z",
+      "last_event_at": "2026-07-16T01:58:34.298Z",
+      "event_count": 27,
+      "raw_event_count": 74,
+      "file_path": "logs/sprhawk/2026-07-14/claude-code__81930b3a-98cf-4b33-894b-06d0cded9dca.jsonl",
       "collection_mode": "cli",
       "health": "ok",
       "model": "mimo-v2.5-pro"
     }
   ],
-  "updated_at": "2026-07-13T07:48:25.078Z"
+  "updated_at": "2026-07-16T01:58:34.299Z"
 }
