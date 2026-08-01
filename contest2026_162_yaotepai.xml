@@ -10,6 +10,7 @@
 
   <project path="contest2026_162_yaotepai" name="contest2026_162_yaotepai">
     <linkfile src="app/hello_app" dest="packages/demos/contest2026_162_hello_app"/>
+    <linkfile src="app/bt_test" dest="packages/demos/contest2026_162_bt_test"/>
     <linkfile src="quickapp/hello_quickapp" dest="packages/apps/contest2026_162_hello_quickapp"/>
     <linkfile src="board/contest_board" dest="vendor/openvela/boards/contest2026_162_board"/>
     <linkfile src="board/sf32lb58" dest="vendor/sifli/boards/sf32lb58"/>

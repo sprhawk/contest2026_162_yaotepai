@@ -53,4 +53,11 @@ ifeq ($(CONFIG_PWM),y)
 CHIP_CSRCS += sf32lb_pwm.c
 endif
 
-include ./ipc_queue/Make.defs
+ifeq ($(CONFIG_UART_BTH4),y)
+CHIP_CSRCS += sf32lb58_bt_adapter.c sf32lb58_bth4.c
+CHIP_CSRCS += lcpu_img_58x_3sco.c
+CHIP_CSRCS += ../drivers/cmsis/sf32lb58x/lcpu_patch.c
+CHIP_CSRCS += ../drivers/cmsis/sf32lb58x/bf0_lcpu_init.c
+endif
+
+include chip/ipc_queue/Make.defs

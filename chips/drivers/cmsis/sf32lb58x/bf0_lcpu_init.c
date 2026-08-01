@@ -79,9 +79,7 @@ __WEAK void lcpu_rom_config(void)
 #if defined(LCPU_RUN_ROM_ONLY)
 #define lcpu_img_install()
 #else
-__WEAK void lcpu_img_install(void)
-{
-}
+extern void lcpu_img_install(void);
 #endif
 
 static void lcpu_ble_patch_install()

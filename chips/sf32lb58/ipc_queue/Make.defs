@@ -1,0 +1,10 @@
+############################################################################
+# chips/sf32lb58/ipc_queue/Make.defs
+#
+# IPC queue sources for SF32LB58
+############################################################################
+
+CHIP_CSRCS += ipc_queue/common/circular_buf.c
+CHIP_CSRCS += ipc_queue/common/ipc_hw.c
+CHIP_CSRCS += ipc_queue/common/ipc_queue.c
+CHIP_CSRCS += ipc_queue/porting/sf32lb58x/hcpu/ipc_hw_port.c

@@ -1,0 +1,6 @@
+config EXAMPLES_BT_TEST
+	bool "BT Test Application"
+	default n
+	depends on BT
+	---help---
+		Simple BT test that enables BLE and starts scanning.
