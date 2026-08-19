@@ -74,19 +74,12 @@ void lcpu_rom_config_default(void)
   {
     uint32_t tx_queue = HCPU2LCPU_MB_CH1_BUF_START_ADDR;
     hal_lcpu_bluetooth_rom_config_t config = {0};
-    hal_lcpu_ble_mem_config_t ble_config = {0};
 
-    config.bit_valid |= 1 << 10 | 1 << 6 | 1 << 2;
-    config.lld_prog_delay = 3;
+    config.bit_valid |= 1 << 10 | 1 << 6;
     config.is_fpga = 0;
     config.default_xtal_enabled = is_enable_lxt;
     HAL_LCPU_CONFIG_set(HAL_LCPU_CONFIG_HCPU_TX_QUEUE, &tx_queue, 4);
     HAL_LCPU_CONFIG_set(HAL_LCPU_CONFIG_BT_CONFIG, &config, sizeof(config));
-
-    ble_config.max_nb_of_hci_completed = 6;
-    ble_config.bit_valid = 1 << 6;
-    HAL_LCPU_CONFIG_set(HAL_LCPU_CONFIG_BT_KE_BUF,
-                        &ble_config, sizeof(ble_config));
   }
 }
 
@@ -98,7 +91,13 @@ __WEAK void lcpu_rom_config(void)
 static void lcpu_ble_patch_install(void)
 {
   memset((void *)0x204F0000, 0, 0x2000);
+#if !defined(LCPU_RUN_SEPERATE_IMG)
+  /* The 3sco LCPU runs a separate prebuilt image; the SDK skips the
+   * ROM patch install in that mode (bf0_lcpu_init.c defines
+   * lcpu_patch_install() as a no-op for LCPU_RUN_SEPERATE_IMG).
+   */
   lcpu_patch_install();
+#endif
 
   if (g_lcpu_rf_cal_disable == 0)
     {

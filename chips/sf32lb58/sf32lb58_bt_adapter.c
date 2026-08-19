@@ -127,13 +127,10 @@ static const uint8_t g_sf32lb58_bt_nvds_default_lxt32k[] =
 extern uint8_t lcpu_power_on(void);
 extern uint8_t lcpu_power_off(void);
 
-/* Stub for bt_rf_cal — provided by BT RF calibration library if available.
- * If linking fails here, the RF cal library is not in the build.
+/* bt_rf_cal() is provided by the vendor RF calibration library
+ * (chips/drivers/cmsis/sf32lb58x/bt_rf_fulcal.c), compiled when
+ * CONFIG_UART_BTH4 is enabled.
  */
-
-void bt_rf_cal(void)
-{
-}
 
 /* Stub for btsnoop logging (debug feature, not needed for production) */
 

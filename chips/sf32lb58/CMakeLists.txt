@@ -78,7 +78,8 @@ if(CONFIG_UART_BTH4)
     list(APPEND SRCS sf32lb58_bt_adapter.c sf32lb58_bth4.c
       sf32lb58_lcpu_boot.c lcpu_img_58x_3sco.c)
     list(APPEND HAL_SRCS
-         ${VENDOR_DIR}/drivers/cmsis/sf32lb58x/lcpu_patch_a2.c)
+         ${VENDOR_DIR}/drivers/cmsis/sf32lb58x/lcpu_patch_a2.c
+         ${VENDOR_DIR}/drivers/cmsis/sf32lb58x/bt_rf_fulcal.c)
 endif()
 
 # SF32LB58 exclusions — exclude HAL files incompatible with sf32lb58
@@ -96,6 +97,7 @@ target_sources(arch PRIVATE ${SRCS} ${HAL_SRCS} ${SYSTEM_SRCS} ${IPC_QUEUE_SRCS}
 target_compile_definitions(arch PRIVATE SOC_BF0_HCPU
                                         SF32LB58X
                                         LCPU_CONFIG_V2
+                                        LCPU_RUN_SEPERATE_IMG
                                         HAL_TICK_PER_SECOND=1000
                                         USE_HAL_DRIVER
                                         USE_SERIALDRIVER)
