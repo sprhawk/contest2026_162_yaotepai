@@ -44,14 +44,38 @@
       "session_id": "81930b3a-98cf-4b33-894b-06d0cded9dca",
       "tool": "claude-code",
       "started_at": "2026-07-13T16:36:04.547Z",
-      "last_event_at": "2026-07-31T14:08:22.431Z",
-      "event_count": 36,
-      "raw_event_count": 4263,
+      "last_event_at": "2026-08-06T12:21:36.707Z",
+      "event_count": 42,
+      "raw_event_count": 4271,
       "file_path": "logs/sprhawk/2026-07-31/claude-code__81930b3a-98cf-4b33-894b-06d0cded9dca.jsonl",
       "collection_mode": "cli",
       "health": "ok",
       "model": "mimo-v2.5-pro"
+    },
+    {
+      "session_id": "4e9364d6-c54d-4689-a688-176c1606c109",
+      "tool": "claude-code",
+      "started_at": "2026-08-06T12:27:36.275Z",
+      "last_event_at": "2026-08-09T06:12:41.202Z",
+      "event_count": 114,
+      "raw_event_count": 170,
+      "file_path": "logs/sprhawk/2026-08-06/claude-code__4e9364d6-c54d-4689-a688-176c1606c109.jsonl",
+      "collection_mode": "cli",
+      "health": "ok",
+      "model": "<synthetic>"
+    },
+    {
+      "session_id": "ae86bea3-5654-400f-bd7e-c336933f6085",
+      "tool": "claude-code",
+      "started_at": "2026-08-19T12:40:28.333Z",
+      "last_event_at": "2026-08-19T12:40:28.333Z",
+      "event_count": 9,
+      "raw_event_count": 17,
+      "file_path": "logs/sprhawk/2026-08-19/claude-code__ae86bea3-5654-400f-bd7e-c336933f6085.jsonl",
+      "collection_mode": "cli",
+      "health": "ok",
+      "model": "deepseek-v4-pro"
     }
   ],
-  "updated_at": "2026-07-31T14:08:22.434Z"
+  "updated_at": "2026-08-19T12:40:28.334Z"
 }
