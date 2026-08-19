@@ -60,6 +60,10 @@ if(CONFIG_SF32LB52_USBDEV)
     list(APPEND SRCS sf32lb_usbdev.c)
 endif()
 
+if(CONFIG_NET)
+  list(APPEND SRCS sf32lb58_netinit.c)
+endif()
+
 # IPC queue sources (shared driver, sf32lb58x porting layer)
 set(IPC_QUEUE_SRCS
     ${NUTTX_CHIP_ABS_DIR}/ipc_queue/common/circular_buf.c
@@ -72,9 +76,9 @@ file(GLOB HAL_SRCS ${VENDOR_DIR}/drivers/hal/*.c)
 
 if(CONFIG_UART_BTH4)
     list(APPEND SRCS sf32lb58_bt_adapter.c sf32lb58_bth4.c
-                     sf32lb58_lcpu_boot.c lcpu_img_58x_3sco.c)
+                     sf32lb58_lcpu_boot.c lcpu_img_58x_52.c)
     list(APPEND HAL_SRCS
-         ${VENDOR_DIR}/drivers/cmsis/sf32lb58x/lcpu_patch.c)
+         ${VENDOR_DIR}/drivers/cmsis/sf32lb58x/lcpu_patch_a2.c)
 endif()
 
 # SF32LB58 exclusions — exclude HAL files incompatible with sf32lb58
