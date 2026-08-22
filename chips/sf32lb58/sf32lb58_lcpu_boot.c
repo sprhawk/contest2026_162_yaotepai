@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "mem_map.h"
+#include "register.h"
 
 /****************************************************************************
  * External Symbols
@@ -91,13 +92,29 @@ __WEAK void lcpu_rom_config(void)
 static void lcpu_ble_patch_install(void)
 {
   memset((void *)0x204F0000, 0, 0x2000);
-#if !defined(LCPU_RUN_SEPERATE_IMG)
-  /* The 3sco LCPU runs a separate prebuilt image; the SDK skips the
-   * ROM patch install in that mode (bf0_lcpu_init.c defines
-   * lcpu_patch_install() as a no-op for LCPU_RUN_SEPERATE_IMG).
+
+  /* Install the LCPU ROM patch.  The patch file is selected at build
+   * time by silicon revision: lcpu_patch.c for A1, lcpu_patch_a2.c for
+   * A2 (see CMakeLists.txt).  Both define the same symbol.
    */
   lcpu_patch_install();
-#endif
+
+  /* Flush the patch bin/record and the BT EM buffer written above.
+   * The LCPU ROM reads these directly from the bus (no cache), so any
+   * lines still sitting in the HCPU D-cache would be invisible to it
+   * and the patch would silently not install.
+   */
+  sf32lb58_lcpu_boot_clean_range((uint32_t)LCPU_PATCH_BUF_START_ADDR,
+                                 LCPU_PATCH_BUF_SIZE);
+  sf32lb58_lcpu_boot_clean_range((uint32_t)LCPU_PATCH_RECORD_ADDR,
+                                 LCPU_PATCH_RECORD_SIZE);
+  sf32lb58_lcpu_boot_clean_range(0x204F0000, 0x2000);
+
+  syslog(LOG_INFO,
+         "sf32lb58 lcpu_boot: chip rev=%u patch CER=0x%lx record=0x%lx\n",
+         (unsigned int)__HAL_SYSCFG_GET_REVID(),
+         (unsigned long)hwp_patch->CER,
+         (unsigned long)*(volatile uint32_t *)LCPU_PATCH_RECORD_ADDR);
 
   if (g_lcpu_rf_cal_disable == 0)
     {
@@ -126,16 +143,16 @@ uint8_t lcpu_power_on(void)
   lcpu_nvds_config();
   syslog(LOG_INFO, "sf32lb58 lcpu_boot: rom_config\n");
   lcpu_rom_config();
-  syslog(LOG_INFO, "sf32lb58 lcpu_boot: clean config 0x%08x len=%d\n",
-         (unsigned int)LCPU_CONFIG_START_ADDR,
-         (int)LCPU_CONFIG_get_total_size());
-  sf32lb58_lcpu_boot_clean_range(LCPU_CONFIG_START_ADDR,
-                                 LCPU_CONFIG_get_total_size());
+  /* syslog(LOG_INFO, "sf32lb58 lcpu_boot: clean config 0x%08x len=%d\n", */
+  /*        (unsigned int)LCPU_CONFIG_START_ADDR, */
+  /*        (int)LCPU_CONFIG_get_total_size()); */
+  /* sf32lb58_lcpu_boot_clean_range(LCPU_CONFIG_START_ADDR, */
+  /*                                LCPU_CONFIG_get_total_size()); */
 
-  if (HAL_RCC_GetHCLKFreq(CORE_ID_LCPU) > 24000000)
-    {
-      HAL_RCC_LCPU_SetDiv(2, 1, 5);
-    }
+  /* if (HAL_RCC_GetHCLKFreq(CORE_ID_LCPU) > 24000000) */
+  /*   { */
+  /*     HAL_RCC_LCPU_SetDiv(2, 1, 5); */
+  /*   } */
 
   syslog(LOG_INFO, "sf32lb58 lcpu_boot: installing img\n");
   lcpu_img_install();
