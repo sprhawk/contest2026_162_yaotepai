@@ -68,14 +68,14 @@
       "session_id": "ae86bea3-5654-400f-bd7e-c336933f6085",
       "tool": "claude-code",
       "started_at": "2026-08-19T12:40:28.333Z",
-      "last_event_at": "2026-08-19T12:40:28.333Z",
-      "event_count": 9,
-      "raw_event_count": 17,
-      "file_path": "logs/sprhawk/2026-08-19/claude-code__ae86bea3-5654-400f-bd7e-c336933f6085.jsonl",
+      "last_event_at": "2026-08-23T13:11:47.493Z",
+      "event_count": 1236,
+      "raw_event_count": 3577,
+      "file_path": "logs/sprhawk/2026-08-23/claude-code__ae86bea3-5654-400f-bd7e-c336933f6085.jsonl",
       "collection_mode": "cli",
       "health": "ok",
       "model": "deepseek-v4-pro"
     }
   ],
-  "updated_at": "2026-08-19T12:40:28.334Z"
+  "updated_at": "2026-08-23T13:11:47.497Z"
 }
