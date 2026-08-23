@@ -104,8 +104,8 @@ static void lcpu_ble_patch_install(void)
    * lines still sitting in the HCPU D-cache would be invisible to it
    * and the patch would silently not install.
    */
-  sf32lb58_lcpu_boot_clean_range((uint32_t)LCPU_PATCH_BUF_START_ADDR,
-                                 LCPU_PATCH_BUF_SIZE);
+  sf32lb58_lcpu_boot_clean_range((uint32_t)LCPU_PATCH_START_ADDR,
+                                 LCPU_PATCH_TOTAL_SIZE);
   sf32lb58_lcpu_boot_clean_range((uint32_t)LCPU_PATCH_RECORD_ADDR,
                                  LCPU_PATCH_RECORD_SIZE);
   sf32lb58_lcpu_boot_clean_range(0x204F0000, 0x2000);
