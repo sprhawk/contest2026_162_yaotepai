@@ -132,16 +132,6 @@ extern uint8_t lcpu_power_off(void);
  * CONFIG_UART_BTH4 is enabled.
  */
 
-/* Stub for btsnoop logging (debug feature, not needed for production) */
-
-void btsnoop_log_capture(uint8_t is_receive, uint8_t *hci_pkt,
-                         uint32_t hci_pkt_size)
-{
-  (void)is_receive;
-  (void)hci_pkt;
-  (void)hci_pkt_size;
-}
-
 /* Stubs for builtin apps that are registered but not compiled */
 
 __attribute__((weak))
