@@ -80,14 +80,14 @@
       "session_id": "da53e9b8-4390-45a9-9611-07a8630c9c7e",
       "tool": "claude-code",
       "started_at": "2026-08-24T02:54:42.490Z",
-      "last_event_at": "2026-08-24T03:54:39.228Z",
-      "event_count": 335,
-      "raw_event_count": 445,
-      "file_path": "logs/sprhawk/2026-08-24/claude-code__da53e9b8-4390-45a9-9611-07a8630c9c7e.jsonl",
+      "last_event_at": "2026-09-03T09:20:37.966Z",
+      "event_count": 22,
+      "raw_event_count": 4864,
+      "file_path": "logs/sprhawk/2026-09-03/claude-code__da53e9b8-4390-45a9-9611-07a8630c9c7e.jsonl",
       "collection_mode": "cli",
       "health": "ok",
       "model": "mimo-v2.5-pro"
     }
   ],
-  "updated_at": "2026-08-24T03:54:39.230Z"
+  "updated_at": "2026-09-03T09:20:37.967Z"
 }
