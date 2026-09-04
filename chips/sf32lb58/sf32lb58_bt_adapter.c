@@ -56,7 +56,7 @@
 #define SF32LB58_BT_RX_BUF_SIZE  LCPU2HCPU_MB_CH1_BUF_SIZE
 #define SF32LB58_BT_RING_DATA_SIZE \
   ((SF32LB58_BT_RX_BUF_SIZE - sizeof(struct circular_buf)) & ~3UL)
-#define SF32LB58_BT_NVDS_BUF_START 0x204E4200
+#define SF32LB58_BT_NVDS_BUF_START 0x204FFD00
 #define SF32LB58_BT_NVDS_BUF_SIZE  0x200
 #define SF32LB58_BT_NVDS_PATTERN   0x4e564453
 #define SF32LB58_BT_TRACE          0
@@ -385,6 +385,7 @@ static size_t sf32lb58_bt_tx_pending(struct circular_buf *tx_ring,
 {
   uint32_t rd;
   uint32_t wr;
+  size_t len;
 
   up_invalidate_dcache((uintptr_t)SF32LB58_BT_TX_BUF_ADDR,
                        (uintptr_t)SF32LB58_BT_TX_BUF_ADDR +
@@ -392,6 +393,15 @@ static size_t sf32lb58_bt_tx_pending(struct circular_buf *tx_ring,
 
   rd = tx_ring->read_idx_mirror;
   wr = tx_ring->write_idx_mirror;
+  len = sf32lb58_bt_ring_data_len(rd, wr, tx_ring->buffer_size);
+
+  if (len > 0 || rd != 0 || wr != 0)
+    {
+      syslog(LOG_ERR,
+             "sf32lb58 tx_pending: rd=%08lx wr=%08lx bsz=%d len=%lu\n",
+             (unsigned long)rd, (unsigned long)wr,
+             (int)tx_ring->buffer_size, (unsigned long)len);
+    }
 
   if (rd_ptr != NULL)
     {
@@ -403,7 +413,7 @@ static size_t sf32lb58_bt_tx_pending(struct circular_buf *tx_ring,
       *wr_ptr = wr;
     }
 
-  return sf32lb58_bt_ring_data_len(rd, wr, tx_ring->buffer_size);
+  return len;
 }
 
 static void sf32lb58_bt_trigger_tx(void)
@@ -427,6 +437,15 @@ static int sf32lb58_bt_wait_tx_idle(struct circular_buf *tx_ring)
         {
           tick_count++;
           start_time = HAL_GetTick();
+        }
+
+      if (tick_count == 1)
+        {
+          syslog(LOG_INFO,
+                 "sf32lb58 bt tx wait: rd=%08lx wr=%08lx ticks=%lu\n",
+                 (unsigned long)rd_ptr,
+                 (unsigned long)wr_ptr,
+                 (unsigned long)tick_count);
         }
 
       if (tick_count >= 100)
@@ -754,6 +773,23 @@ int sf32lb58_bt_controller_enable(void)
   HAL_HPAON_WakeCore(CORE_ID_LCPU);
   g_sf32lb58_bt_env.wake_held = true;
 
+  /* Open the IPC queue BEFORE powering on the LCPU.
+   * The SiFli SDK does this in zbt_config_mailbox (INIT_DEVICE_EXPORT)
+   * which runs before ble_power_on.  The LCPU may send data immediately
+   * after boot, so the queue must be ready.
+   */
+
+  syslog(LOG_INFO, "sf32lb58 bt: opening IPC before LCPU boot\n");
+  ret = ipc_queue_open(g_sf32lb58_bt_env.ipc_port);
+  syslog(LOG_INFO, "sf32lb58 bt: ipc_queue_open returned %d\n", ret);
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "sf32lb58 bt: ipc_queue_open failed: %d\n", ret);
+      return ret;
+    }
+
+  g_sf32lb58_bt_env.queue_open = true;
+
   syslog(LOG_INFO, "sf32lb58 bt: powering on LCPU\n");
   ret = lcpu_power_on();
   if (ret != 0)
@@ -762,31 +798,30 @@ int sf32lb58_bt_controller_enable(void)
       return -EIO;
     }
 
-  syslog(LOG_INFO, "sf32lb58 bt: LCPU powered on, opening IPC\n");
+  syslog(LOG_INFO, "sf32lb58 bt: LCPU powered on, waiting for init\n");
 
-  /* lcpu_power_on() keeps the bus bridge active (no cancel inside).
-   * Open the IPC queue while the bridge is powered, then cancel.
-   */
-
-  g_sf32lb58_bt_env.wake_held = true;
-
-  syslog(LOG_INFO, "sf32lb58 bt: calling ipc_queue_open\n");
-  ret = ipc_queue_open(g_sf32lb58_bt_env.ipc_port);
-  syslog(LOG_INFO, "sf32lb58 bt: ipc_queue_open returned %d\n", ret);
-
-  /* Check if NVIC interrupt for mailbox is enabled */
+  /* Wait for LCPU to initialize, matching SiFli SDK behavior (1s) */
   {
-    uint32_t iser0 = NVIC->ISER[0];
-    uint32_t iser1 = NVIC->ISER[1];
-    syslog(LOG_INFO, "sf32lb58 bt: NVIC ISER0=%08lx ISER1=%08lx\n",
-           (unsigned long)iser0, (unsigned long)iser1);
+    volatile uint32_t i;
+    for (i = 0; i < 8499000 * 1; i++)
+      ;
   }
-  if (ret < 0)
-    {
-      HAL_HPAON_CANCEL_LP_ACTIVE_REQUEST();
-      g_sf32lb58_bt_env.wake_held = false;
-      return ret;
-    }
+
+  /* Log TX ring metadata for diagnostics */
+  {
+    struct circular_buf *tx_dbg =
+        (struct circular_buf *)SF32LB58_BT_TX_BUF_ADDR;
+    up_invalidate_dcache((uintptr_t)SF32LB58_BT_TX_BUF_ADDR,
+                         (uintptr_t)SF32LB58_BT_TX_BUF_ADDR +
+                         sizeof(*tx_dbg));
+    syslog(LOG_INFO,
+           "sf32lb58 tx ring: buf_size=%d rd=%08lx wr=%08lx "
+           "rd_buf=%p wr_buf=%p\n",
+           (int)tx_dbg->buffer_size,
+           (unsigned long)tx_dbg->read_idx_mirror,
+           (unsigned long)tx_dbg->write_idx_mirror,
+           tx_dbg->rd_buffer_ptr, tx_dbg->wr_buffer_ptr);
+  }
 
   syslog(LOG_INFO, "sf32lb58 bt: flushing TX ring, then waiting RX ring\n");
   up_clean_dcache((uintptr_t)SF32LB58_BT_TX_BUF_ADDR,
@@ -808,6 +843,40 @@ int sf32lb58_bt_controller_enable(void)
         return ret;
       }
 
+    /* Dump boot data from LCPU for diagnostics */
+    {
+      uint32_t rd = rx_ring->read_idx_mirror;
+      uint32_t wr = rx_ring->write_idx_mirror;
+      uint32_t rd_idx = CB_GET_PTR_IDX(rd);
+      uint32_t wr_idx = CB_GET_PTR_IDX(wr);
+      uint32_t boot_len = (wr_idx >= rd_idx) ? (wr_idx - rd_idx) :
+                          (rx_ring->buffer_size - (rd_idx - wr_idx));
+      uint8_t *pool = (uint8_t *)(rx_ring + 1);
+      char hexbuf[96];
+      int n;
+
+      syslog(LOG_INFO,
+             "sf32lb58 rx boot: rd=%08lx wr=%08lx len=%lu buf_size=%d\n",
+             (unsigned long)rd, (unsigned long)wr,
+             (unsigned long)boot_len, (int)rx_ring->buffer_size);
+
+      /* Print first64 bytes of boot data as hex */
+      n = (boot_len > 64) ? 64 : (int)boot_len;
+      if (n > 0)
+        {
+          int pos = 0;
+          int i;
+          for (i = 0; i < n && pos < (int)sizeof(hexbuf) - 4; i++)
+            {
+              snprintf(&hexbuf[pos], sizeof(hexbuf) - pos,
+                       "%02x ", pool[(rd_idx + i) % rx_ring->buffer_size]);
+              pos += 3;
+            }
+          hexbuf[pos] = '\0';
+          syslog(LOG_INFO, "sf32lb58 rx boot data: %s\n", hexbuf);
+        }
+    }
+
     rx_ring->read_idx_mirror = rx_ring->write_idx_mirror;
     g_sf32lb58_bt_env.rx_read_idx_mirror = rx_ring->write_idx_mirror;
 
@@ -817,7 +886,6 @@ int sf32lb58_bt_controller_enable(void)
     __DSB();
   }
 
-  g_sf32lb58_bt_env.queue_open = true;
   g_sf32lb58_bt_status = SF32LB58_BT_STATUS_ENABLED;
 
   return OK;
@@ -875,17 +943,7 @@ int sf32lb58_bt_controller_disable(void)
 
 int sf32lb58_host_send_packet(const uint8_t *data, uint16_t len)
 {
-  struct circular_buf *tx_ring =
-      (struct circular_buf *)SF32LB58_BT_TX_BUF_ADDR;
-  uint32_t start_time;
-  uint32_t tick_count;
   size_t written;
-  size_t remaining;
-  size_t offset;
-  size_t chunk;
-  size_t chunks;
-  uint32_t wr_ptr;
-  int ret;
 
   if (data == NULL || len == 0)
     {
@@ -900,80 +958,22 @@ int sf32lb58_host_send_packet(const uint8_t *data, uint16_t len)
       return -ENODEV;
     }
 
-  syslog(LOG_INFO, "sf32lb58 send: len=%d type=%02x\n",
-         len, data[0]);
+  syslog(LOG_ERR,
+         "sf32lb58 send: len=%d type=%02x ipc_port=%p\n",
+         len, data[0], (void *)(uintptr_t)g_sf32lb58_bt_env.ipc_port);
 
-  offset = 0;
-  remaining = len;
-  start_time = HAL_GetTick();
-  tick_count = 0;
-  chunks = 0;
-  wr_ptr = 0;
-
-  ret = sf32lb58_bt_wait_tx_idle(tx_ring);
-  if (ret < 0)
+  /* Use ipc_queue_write — the same path the SiFli SDK uses.
+   * This handles D-cache coherency and interrupt triggering internally.
+   */
+  written = ipc_queue_write(g_sf32lb58_bt_env.ipc_port, data, len, 100);
+  syslog(LOG_ERR,
+         "sf32lb58 send: ipc_queue_write returned %lu (expected %d)\n",
+         (unsigned long)written, (int)len);
+  if (written != len)
     {
-      return ret;
-    }
-
-  while (remaining > 0)
-    {
-      irqstate_t flags;
-
-      chunk = sf32lb58_bt_tx_chunk_len(data, len, offset);
-
-      up_invalidate_dcache((uintptr_t)SF32LB58_BT_TX_BUF_ADDR,
-                           (uintptr_t)SF32LB58_BT_TX_BUF_ADDR +
-                           sizeof(*tx_ring));
-
-      flags = enter_critical_section();
-      written = sf32lb58_bt_ring_write(tx_ring, data + offset, chunk);
-      leave_critical_section(flags);
-
-      if (written == 0)
-        {
-          if (HAL_GetTick() != start_time)
-            {
-              tick_count++;
-              start_time = HAL_GetTick();
-            }
-
-          if (tick_count >= 10)
-            {
-              syslog(LOG_ERR,
-                     "sf32lb58 bt tx timeout: remaining=%lu\n",
-                     (unsigned long)remaining);
-              return -ETIMEDOUT;
-            }
-
-          continue;
-        }
-
-      offset += written;
-      remaining -= written;
-
-      __DSB();
-      wr_ptr = tx_ring->write_idx_mirror;
-      sf32lb58_bt_trigger_tx();
-      chunks++;
-    }
-
-  if (data[0] == SF32LB58_BT_H4_CMD)
-    {
-      up_invalidate_dcache((uintptr_t)SF32LB58_BT_TX_BUF_ADDR,
-                           (uintptr_t)SF32LB58_BT_TX_BUF_ADDR +
-                           sizeof(*tx_ring));
-      syslog(LOG_INFO,
-             "sf32lb58 send: after trigger rd=%08lx wr=%08lx\n",
-             (unsigned long)tx_ring->read_idx_mirror,
-             (unsigned long)tx_ring->write_idx_mirror);
-
-      ret = sf32lb58_bt_wait_tx_idle(tx_ring);
-      if (ret < 0)
-        {
-          syslog(LOG_ERR, "sf32lb58 send: wait_tx_idle failed: %d\n", ret);
-          return ret;
-        }
+      syslog(LOG_ERR, "sf32lb58 send: ipc_queue_write wrote %lu/%d\n",
+             (unsigned long)written, (int)len);
+      return -ETIMEDOUT;
     }
 
   return OK;

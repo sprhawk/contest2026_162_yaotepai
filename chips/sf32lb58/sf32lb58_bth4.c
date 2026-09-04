@@ -584,6 +584,8 @@ static int sf32lb58_bt_send(struct bt_driver_s *drv,
   uint16_t opcode;
   int ret;
 
+  syslog(LOG_ERR, "sf32lb58 bt_send: type=%d len=%zu\n", type, len);
+
   switch (type)
     {
       case BT_CMD:
@@ -669,6 +671,8 @@ static int sf32lb58_bt_open(struct bt_driver_s *drv)
 
   (void)drv;
 
+  syslog(LOG_ERR, "sf32lb58 bt_open: opening controller\n");
+
   g_sf32lb58_bt_priv.rxlen = 0;
   g_sf32lb58_bt_priv.drop_rx_until_tx = true;
 
@@ -731,10 +735,11 @@ int sf32lb58_bt_initialize(void)
       return ret;
     }
 
-  /* Do NOT call z_sys_init() here.  The bluetoothd framework calls
-   * bt_sal_init() → z_sys_init() during its startup.  Calling it
-   * twice causes the second call to block or fail.
+  /* Initialize the Zblue BT stack.  This calls z_sys_init() once.
+   * Safe to call multiple times — the function guards against double init.
    */
+
+  sf32lb58_bt_zblue_init_once();
 
   return OK;
 }
